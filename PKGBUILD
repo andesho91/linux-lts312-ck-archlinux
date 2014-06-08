@@ -11,6 +11,8 @@ _makenconfig=   # Tweak kernel options prior to a build via nconfig
 _localmodcfg=   # Compile ONLY probed modules
 _use_current=   # Use the current kernel's .config file
 _NUMAdisable=y  # Disable NUMA in kernel config
+_1k_HZ_ticks=y	# Use 1000Hz tick rate
+_BFQ_enable_=  # Enable BFQ as the default I/O scheduler
 
 ### DOCS
 # DETAILS FOR _localmodcfg=
@@ -29,27 +31,45 @@ _NUMAdisable=y  # Disable NUMA in kernel config
 # Enabling this option will use the .config of the RUNNING kernel rather than the ARCH defaults.
 # Useful when the package gets updated and you already went through the trouble of customizing your
 # config options.  NOT recommended when a new kernel is released, but again, convenient for package bumps.
+
 # DETAILS FOR _NUMAdisable=
 # Since >99 % of users do not have multiple CPUs but do have multiple cores in one CPU.
 # see, https://bugs.archlinux.org/task/31187
 
+# DETAILS FOR _1k_HZ_ticks=
+# Running with a 1000 HZ tick rate (vs the ARCH 300) is reported to solve the
+# issues with the bfs/linux 3.1x and suspend. For more see:
+# http://ck-hack.blogspot.com/2013/09/bfs-0441-311-ck1.html?showComment=1378756529345#c5266548105449573343
+
+# DETAILS FOR _BFQ_enable_=
+# Alternative I/O scheduler by Paolo.
+# Set this if you want it enabled globally i.e. for all devices in your system
+# If you want it enabled on a device-by-device basis, leave this unset and see:
+# https://wiki.archlinux.org/index.php/Linux-ck#How_to_Enable_the_BFQ_I.2FO_Scheduler
+
 ### Do not edit below this line unless you know what you're doing
 
-pkgname=linux-lts312
+pkgname=linux-lts312-ck
 _pkgname=${pkgname}
 _kernelname=${_pkgname#linux}
 _basekernel=3.12
 true && pkgname=(${_pkgname} ${_pkgname}-headers)
-pkgver=3.12.20
-pkgrel=1
+pkgver=3.12.21
+pkgrel=2
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
 makedepends=('kmod' 'inetutils' 'bc')
 options=('!strip')
+_ckpatchversion=2
+_ckpatchname="patch-3.12-ck${_ckpatchversion}"
+_gcc_patch="enable_additional_cpu_optimizations_for_gcc_v4.9+.patch"
+_bfqpath="http://algo.ing.unimo.it/people/paolo/disk_sched/patches/3.12.0-v7r4"
 source=("https://www.kernel.org/pub/linux/kernel/v3.x/linux-3.12.tar.xz"
 	"https://www.kernel.org/pub/linux/kernel/v3.x/patch-${pkgver}.xz"
-	'linux-lts312.preset'
+	"http://ck.kolivas.org/patches/3.0/3.12/3.12-ck${_ckpatchversion}/${_ckpatchname}.bz2"
+	"http://repo-ck.com/source/gcc_patch/${_gcc_patch}.gz"
+	'linux-lts312-ck.preset'
 	'change-default-console-loglevel.patch'
 	'config' 'config.x86_64'
 	'criu-no-expert.patch'
@@ -58,21 +78,29 @@ source=("https://www.kernel.org/pub/linux/kernel/v3.x/linux-3.12.tar.xz"
 	'0003-nfs-check-if-gssd-is-running-before-attempting-to-us.patch'
 	'0004-nfs-rpc_pipe-remove-the-clntXX-dir-if-creating-the-p.patch'
 	'0005-nfs-sunrpc-add-an-info-file-for-the-dummy-gssd.patch'
-	'0006-nfs-rpc_pipe-fix-cleanup-of-dummy-gssd-directory-whe.patch')
+	'0006-nfs-rpc_pipe-fix-cleanup-of-dummy-gssd-directory-whe.patch'
+	"${_bfqpath}/0001-block-cgroups-kconfig-build-bits-for-BFQ-v7r4-3.12.patch"
+	"${_bfqpath}/0002-block-introduce-the-BFQ-v7r4-I-O-sched-for-3.12.patch"
+	"${_bfqpath}/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-v7r4-for-3.12.0.patch")
 
 sha256sums=('2e120ec7fde19fa51dc6b6cc11c81860a0775defcad5a5bf910ed9a50e845a02'
-            '1b38ffa0d4891220cc0a622f6e5bad4408636c0203a4e66a3e57e33869d7f894'
-            'cdad2ad2f3165be86d903f37f6e761f1707cba51bccb802e08ae259445113cad'
+            '13d1a0267f96096c1e683525fad8e9af155d3ce559146727c54a6d6ead6e2333'
+            '413def4af24ff70615cf5ef5cc1f1347bd634d87686a84ad0e2c2d3b052da8b8'
+            'c6c4a9f77683b95c37636b20c4bc8a1f8214c87feef7fc469e58534fcc32fb4a'
+            '136c9f7f099cdccdec0c3d565632907a28ef3d0295e23b45f302fe1c1fe6f95e'
             'faced4eb4c47c4eb1a9ee8a5bf8a7c4b49d6b4d78efbe426e410730e6267d182'
-            'cc346d86bf3dd07a983dab996251836b53c156e2f053cc17d9a6069256faef8c'
-            '852b83c4d760b3089039b39c6926dcd607ec63c8c2759839fdeb6f4451ff0335'
+            'ba4aaafecc9e396772abe9f1d9a16082ea6ad563bf7583b2405413634cf0cb7d'
+            'b7765d7591428c65d1137c0c0200be6d8ffa9450a16d85fcc387a0020c286102'
             'daa75228a4c45a925cc5dbfeba884aa696a973a26af7695adc198c396474cbd5'
             '6ed0d7b259dca7a3cb4ed5cba10e87d2f9b29ecab6438e47f70d6961cc0eb665'
             '3e3a2f5531b18fa6494bf1d555be981aef288c5d74480569d907629be06b54b3'
             '52d8d897e2a2a1605a904d200ff123b453f2edbeebe623480bf5ee58d87ac4e2'
             'df5c98b5719b97accbee16d387b81781cd9694801cf1f1d831fdf5069942fda1'
             'ed41c98da84dc0003777edca3101d4923be76701d6b494cd7c512a4da39de710'
-            'b54af31bf32ea47dd47c48113481cc3288c04d844f5b4814663b108f43f415a7')
+            'b54af31bf32ea47dd47c48113481cc3288c04d844f5b4814663b108f43f415a7'
+            '308be163ba16b8f988648c53847ee1c74bd046886c7363981545382c59db5dd5'
+            '632c01361bb6bcc025216c1eb448e32f6b71876bc7ae1bd9c06b85123061bd22'
+            'ff14ed204b8b479bdb505ba8eac99f193eb04fcb7bf63737c81f67706aa51203')
 
 prepare() {
 	cd "${srcdir}/linux-${_basekernel}"
@@ -103,6 +131,21 @@ prepare() {
 		msg " $p"
 		patch -Np1 -i "$p"
 	done
+	
+	# patch source with ck patchset with BFS
+	# fix double name in EXTRAVERSION
+	sed -i -re "s/^(.EXTRAVERSION).*$/\1 = /" "${srcdir}/${_ckpatchname}"
+	msg "Patching source with ck2 including BFS v0.444"
+	patch -Np1 -i "${srcdir}/${_ckpatchname}"
+  
+	# Patch source to enable more gcc CPU optimizatons via the make nconfig
+	patch -Np1 -i "${srcdir}/${_gcc_patch}"
+	
+	msg "Patching source with BFQ patches"
+	for p in $(ls ${srcdir}/000{1,2,3}-block*.patch); do
+		msg " $p"
+		patch -Np1 -i "$p"
+	done
 
 	# Clean tree and copy ARCH config over
 	msg "Running make mrproper to clean source tree"
@@ -112,6 +155,15 @@ prepare() {
 		cat "${srcdir}/config.x86_64" > ./.config
 	else
 		cat "${srcdir}/config" > ./.config
+	fi
+
+	### Optionally set tickrate to 1000 to avoid suspend issues as reported here:
+	# http://ck-hack.blogspot.com/2013/09/bfs-0441-311-ck1.html?showComment=1379234249615#c4156123736313039413
+	if [ -n "$_1k_HZ_ticks" ]; then
+	msg "Setting tick rate to 1k..."
+		sed -i -e 's/^CONFIG_HZ_300=y/# CONFIG_HZ_300 is not set/' \
+			-i -e 's/^# CONFIG_HZ_1000 is not set/CONFIG_HZ_1000=y/' \
+			-i -e 's/^CONFIG_HZ=300/CONFIG_HZ=1000/' .config
 	fi
 
 	### Optionally use running kernel's config
@@ -150,6 +202,13 @@ prepare() {
 				-i -e '/CONFIG_USE_PERCPU_NUMA_NODE_ID=y/d' \
 				-i -e '/CONFIG_ACPI_NUMA=y/d' ./.config
 		fi
+	fi
+
+	### Optionally enable BFQ as the default I/O scheduler
+	if [ -n "$_BFQ_enable_" ]; then
+		msg "Setting BFQ as default I/O scheduler..."
+		sed -i -e '/CONFIG_DEFAULT_IOSCHED/ s,cfq,bfq,' \
+			-i -e s'/CONFIG_DEFAULT_CFQ=y/# CONFIG_DEFAULT_CFQ is not set\nCONFIG_DEFAULT_BFQ=y/' ./.config
 	fi
 
 	# set extraversion to pkgrel
@@ -192,13 +251,14 @@ build() {
 	make ${MAKEFLAGS} LOCALVERSION= bzImage modules
 }
 
-package_linux-lts312() {
-	_Kpkgdesc='The ${_pkgname} kernel and modules - 3.12 longterm stable kernel'
-	pkgdesc="${_Kpkgdesc}"
+package_linux-lts312-ck() {
+pkgdesc='The linux-lts312 kernel and modules with the ck2 patchset featuring the Brain Fuck Scheduler v0.444'
+	#_Kpkgdesc='The linux-lts312 kernel and modules with the ck2 patchset featuring the Brain Fuck Scheduler v0.444'
+	#pkgdesc="${_Kpkgdesc}"
 	depends=('coreutils' 'linux-firmware' 'kmod' 'mkinitcpio>=0.7')
 	optdepends=('crda: to set the correct wireless channels of your country' 'modprobed_db: Keeps track of EVERY kernel module that has ever been probed - useful for those of us who make localmodconfig')
-	backup=("etc/mkinitcpio.d/${_pkgname}.preset")
-	install=${_pkgname}.install
+	backup=("etc/mkinitcpio.d/linux-lts312-ck.preset")
+	install=linux-lts312-ck.install
 
 	cd "${srcdir}/linux-${_basekernel}"
 
@@ -209,7 +269,7 @@ package_linux-lts312() {
 
 	mkdir -p "${pkgdir}"/{lib/modules,lib/firmware,boot}
 	make LOCALVERSION= INSTALL_MOD_PATH="${pkgdir}" modules_install
-	cp arch/$KARCH/boot/bzImage "${pkgdir}/boot/vmlinuz-linux-lts312"
+	cp arch/$KARCH/boot/bzImage "${pkgdir}/boot/vmlinuz-linux-lts312-ck"
 
 	# add vmlinux
 	install -D -m644 vmlinux "${pkgdir}/usr/src/linux-${_kernver}/vmlinux"
@@ -219,18 +279,18 @@ package_linux-lts312() {
 	true && install=${install}.pkg
 
 	sed \
-		-e  "s/KERNEL_NAME=.*/KERNEL_NAME=-lts312/g" \
+		-e  "s/KERNEL_NAME=.*/KERNEL_NAME=-lts312-ck/g" \
 		-e  "s/KERNEL_VERSION=.*/KERNEL_VERSION=${_kernver}/g" \
 		-i "${startdir}/${install}"
 
 	# install mkinitcpio preset file for kernel
-	install -D -m644 "${srcdir}/linux-lts312.preset" "${pkgdir}/etc/mkinitcpio.d/linux-lts312.preset"
+	install -D -m644 "${srcdir}/linux-lts312-ck.preset" "${pkgdir}/etc/mkinitcpio.d/linux-lts312-ck.preset"
 	sed \
-		-e "1s|'linux.*'|'linux-lts312'|" \
-		-e "s|ALL_kver=.*|ALL_kver=\"/boot/vmlinuz-linux-lts312\"|" \
-		-e "s|default_image=.*|default_image=\"/boot/initramfs-linux-lts312.img\"|" \
-		-e "s|fallback_image=.*|fallback_image=\"/boot/initramfs-linux-lts312-fallback.img\"|" \
-		-i "${pkgdir}/etc/mkinitcpio.d/linux-lts312.preset"
+		-e "1s|'linux.*'|'linux-lts312-ck'|" \
+		-e "s|ALL_kver=.*|ALL_kver=\"/boot/vmlinuz-linux-lts312-ck\"|" \
+		-e "s|default_image=.*|default_image=\"/boot/initramfs-linux-lts312-ck.img\"|" \
+		-e "s|fallback_image=.*|fallback_image=\"/boot/initramfs-linux-lts312-ck-fallback.img\"|" \
+		-i "${pkgdir}/etc/mkinitcpio.d/linux-lts312-ck.preset"
 
 	# remove build and source links
 	rm -f "${pkgdir}"/lib/modules/${_kernver}/{source,build}
@@ -239,10 +299,10 @@ package_linux-lts312() {
 	# gzip -9 all modules to save 100MB of space
 	find "${pkgdir}" -name '*.ko' -exec gzip -9 {} \;
 	# make room for external modules
-	ln -s "../extramodules-${_basekernel}${_kernelname:lts312}" "${pkgdir}/lib/modules/${_kernver}/extramodules"
+	ln -s "../extramodules-${_basekernel}${_kernelname:lts312-ck}" "${pkgdir}/lib/modules/${_kernver}/extramodules"
 	# add real version for building modules and running depmod from post_install/upgrade
-	mkdir -p "${pkgdir}/lib/modules/extramodules-${_basekernel}${_kernelname:lts312}"
-	echo "${_kernver}" > "${pkgdir}/lib/modules/extramodules-${_basekernel}${_kernelname:lts312}/version"
+	mkdir -p "${pkgdir}/lib/modules/extramodules-${_basekernel}${_kernelname:lts312-ck}"
+	echo "${_kernver}" > "${pkgdir}/lib/modules/extramodules-${_basekernel}${_kernelname:lts312-ck}/version"
 
 	# Now we call depmod...
 	depmod -b "$pkgdir" -F System.map "$_kernver"
@@ -251,10 +311,11 @@ package_linux-lts312() {
 	mv "$pkgdir/lib" "$pkgdir/usr"
 }
 
-package_linux-lts312-headers() {
-	_Hpkgdesc='Header files and scripts to build modules for linux-ck.'
-	pkgdesc="${_Hpkgdesc}"
-	depends=('linux-lts312') # added to keep kernel and headers packages matched
+package_linux-lts312-ck-headers() {
+	pkgdesc='Header files and scripts to build modules for linux-lts312-ck.'
+	#_Hpkgdesc='Header files and scripts to build modules for linux-lts312-ck.'
+	#pkgdesc="${_Hpkgdesc}"	
+	depends=('linux-lts312-ck') # added to keep kernel and headers packages matched
 
 	install -dm755 "${pkgdir}/usr/lib/modules/${_kernver}"
 
